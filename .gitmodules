@@ -1,0 +1,3 @@
+[submodule "nitro"]
+	path = nitro
+	url = git@github.com:bumptech/nitro.git
