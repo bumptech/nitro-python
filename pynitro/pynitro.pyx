@@ -22,8 +22,18 @@ cdef extern from "nitro.h":
 
     nitro_socket_t * nitro_socket_bind(char *location, nitro_sockopt_t *opt)
     nitro_socket_t * nitro_socket_connect(char *location, nitro_sockopt_t *opt)
-    nitro_frame_t * nitro_recv(nitro_socket_t *s, int flags)
-    int nitro_send(nitro_frame_t **fr, nitro_socket_t *s, int flags)
+    void nitro_socket_destroy(nitro_socket_t *s)
+
+    nitro_frame_t * nitro_recv(nitro_socket_t *s, int flags) nogil
+    int nitro_send(nitro_frame_t **fr, nitro_socket_t *s, int flags) nogil
+    int nitro_reply(nitro_frame_t *snd, nitro_frame_t **fr, nitro_socket_t *s, int flags) nogil
+    int nitro_relay_fw(nitro_frame_t *snd, nitro_frame_t **fr, nitro_socket_t *s, int flags) nogil
+    int nitro_relay_bk(nitro_frame_t *snd, nitro_frame_t **fr, nitro_socket_t *s, int flags) nogil
+    int nitro_sub(nitro_socket_t *s, uint8_t *d, size_t l)
+    int nitro_unsub(nitro_socket_t *s, uint8_t *d, size_t l)
+    int nitro_pub(nitro_frame_t **fr,
+        uint8_t *k, size_t l, nitro_socket_t *s, int flags) nogil
+
     int nitro_eventfd(nitro_socket_t *s)
 
     int nitro_error()
@@ -39,6 +49,9 @@ class NitroError(Exception):
     pass
 
 class NitroEmpty(Exception):
+    pass
+
+class NitroFull(Exception):
     pass
 
 cdef class NitroFrame(object):
@@ -70,8 +83,44 @@ cdef class NitroFrame(object):
             len(self.data)))
 
     cdef sendto(self, nitro_socket_t *s, int flags, int *res):
-        cdef int e = nitro_send(&self.frame, s, flags | self._REUSE)
-        res[0] = e
+        cdef nitro_frame_t *f = self.frame
+        cdef int e
+        flags |= self._REUSE
+        with nogil:
+            e = nitro_send(&f, s, flags)
+            res[0] = e
+
+    cdef replyto(self, nitro_frame_t *snd, nitro_socket_t *s, int flags, int *res):
+        cdef nitro_frame_t *f = self.frame
+        cdef int e
+        flags |= self._REUSE
+        with nogil:
+            e = nitro_reply(snd, &f, s, flags)
+            res[0] = e
+
+    cdef relayfwto(self, nitro_frame_t *snd, nitro_socket_t *s, int flags, int *res):
+        cdef nitro_frame_t *f = self.frame
+        cdef int e
+        flags |= self._REUSE
+        with nogil:
+            e = nitro_relay_fw(snd, &f, s, flags)
+            res[0] = e
+
+    cdef relaybkto(self, nitro_frame_t *snd, nitro_socket_t *s, int flags, int *res):
+        cdef nitro_frame_t *f = self.frame
+        cdef int e
+        flags |= self._REUSE
+        with nogil:
+            e = nitro_relay_bk(snd, &f, s, flags)
+            res[0] = e
+
+    cdef pubto(self, uint8_t *k, size_t l, nitro_socket_t *s, int flags, int *res):
+        cdef nitro_frame_t *f = self.frame
+        cdef int e
+        flags |= self._REUSE
+        with nogil:
+            e = nitro_pub(&f, k, l, s, flags)
+            res[0] = e
 
 _NITRO_EAGAIN = 7
 
@@ -130,14 +179,17 @@ cdef class NitroSocket(object):
         else:
             cflags = 0
 
-        fr = nitro_recv(self.socket, cflags)
+        cdef nitro_socket_t *s = self.socket
+        with nogil:
+            fr = nitro_recv(s, cflags)
 
         if fr == NULL:
             e = nitro_error()
             if e == _NITRO_EAGAIN:
                 raise NitroEmpty()
 
-            raise NitroError(nitro_errmsg(e))
+            error = nitro_errmsg(nitro_error())
+            raise NitroError(error)
 
         ofr = NitroFrame(None, False)
         ofr.set_frame(fr)
@@ -157,11 +209,96 @@ cdef class NitroSocket(object):
 
         if e < 0:
             if e == _NITRO_EAGAIN:
-                raise NitroEmpty()
+                raise NitroFull()
 
-            raise NitroError(nitro_errmsg(e))
+            error = nitro_errmsg(nitro_error())
+            raise NitroError(error)
+
+    def reply(self, NitroFrame snd, NitroFrame o, flags=None):
+        cdef int cflags
+        cdef int e
+
+        if flags:
+            cflags = flags
+        else:
+            cflags = 0
+
+        o.replyto(snd.frame, self.socket, cflags, &e)
+
+        if e < 0:
+            if e == _NITRO_EAGAIN:
+                raise NitroFull()
+
+            error = nitro_errmsg(nitro_error())
+            raise NitroError(error)
+
+    def relay_fw(self, NitroFrame snd, NitroFrame o, flags=None):
+        cdef int cflags
+        cdef int e
+
+        if flags:
+            cflags = flags
+        else:
+            cflags = 0
+
+        o.relayfwto(snd.frame, self.socket, cflags, &e)
+
+        if e < 0:
+            if e == _NITRO_EAGAIN:
+                raise NitroFull()
+
+            error = nitro_errmsg(nitro_error())
+            raise NitroError(error)
+
+    def relay_bk(self, NitroFrame snd, NitroFrame o, flags=None):
+        cdef int cflags
+        cdef int e
+
+        if flags:
+            cflags = flags
+        else:
+            cflags = 0
+
+        o.relaybkto(snd.frame, self.socket, cflags, &e)
+
+        if e < 0:
+            if e == _NITRO_EAGAIN:
+                raise NitroFull()
+
+            error = nitro_errmsg(nitro_error())
+            raise NitroError(error)
+
+    def sub(self, prefix):
+        cdef int r
+        assert type(prefix) is str
+        r = nitro_sub(self.socket, prefix, len(prefix))
+        if r < 0:
+            error = nitro_errmsg(nitro_error())
+            raise NitroError(error)
+
+    def unsub(self, prefix):
+        cdef int r
+        assert type(prefix) is str
+        r = nitro_unsub(self.socket, prefix, len(prefix))
+        if r < 0:
+            error = nitro_errmsg(nitro_error())
+            raise NitroError(error)
+
+    def pub(self, k, NitroFrame o, flags=None):
+        cdef int cflags
+        cdef int e
+
+        if flags:
+            cflags = flags
+        else:
+            cflags = 0
+
+        o.pubto(k, len(k), self.socket, cflags, &e)
+
+        if e < 0:
+            error = nitro_errmsg(nitro_error())
+            raise NitroError(error)
+        return e
 
     def __dealloc__(self):
-        pass
-        # XXX destroy socket.. and what about
-        # sockopt?
+        nitro_socket_destroy(self.socket)
