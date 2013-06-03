@@ -23,7 +23,7 @@ cdef extern from "nitro.h":
     nitro_socket_t * nitro_socket_bind(char *location, nitro_sockopt_t *opt)
     nitro_socket_t * nitro_socket_connect(char *location, nitro_sockopt_t *opt)
     nitro_frame_t * nitro_recv(nitro_socket_t *s, int flags)
-    int nitro_send(nitro_frame_t *fr, nitro_socket_t *s, int flags)
+    int nitro_send(nitro_frame_t **fr, nitro_socket_t *s, int flags)
     int nitro_eventfd(nitro_socket_t *s)
 
     int nitro_error()
@@ -42,6 +42,7 @@ class NitroEmpty(Exception):
     pass
 
 cdef class NitroFrame(object):
+    _REUSE = 1
     cdef nitro_frame_t *frame
     def __init__(self, data, use_data=True):
         if use_data:
@@ -69,13 +70,12 @@ cdef class NitroFrame(object):
             len(self.data)))
 
     cdef sendto(self, nitro_socket_t *s, int flags, int *res):
-        cdef int e = nitro_send(self.frame, s, flags)
+        cdef int e = nitro_send(&self.frame, s, flags | self._REUSE)
         res[0] = e
 
 _NITRO_EAGAIN = 7
 
 cdef class NitroSocket(object):
-    _NOCOPY = 1
     NOWAIT = 2
     cdef nitro_socket_t *socket
     cdef nitro_sockopt_t *opt
