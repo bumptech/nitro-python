@@ -5,7 +5,6 @@ from time import sleep
 from pynitro import NitroSocket, NitroFrame
 
 def backend():
-    print 'one!'
     s = NitroSocket()
     s.bind("tcp://127.0.0.1:4444")
 
@@ -30,7 +29,7 @@ def sender(uniq):
     s = NitroSocket()
     s.connect("tcp://127.0.0.1:4445")
 
-    for x in xrange(10000):
+    for x in xrange(100000):
         fr = NitroFrame(uniq + str(x))
         s.send(fr)
         fr = s.recv()
