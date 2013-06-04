@@ -122,7 +122,7 @@ cdef class NitroFrame(object):
             e = nitro_pub(&f, k, l, s, flags)
             res[0] = e
 
-_NITRO_EAGAIN = 7
+_NITRO_EAGAIN = 8
 
 cdef class NitroSocket(object):
     NOWAIT = 2
@@ -188,7 +188,7 @@ cdef class NitroSocket(object):
             if e == _NITRO_EAGAIN:
                 raise NitroEmpty()
 
-            error = nitro_errmsg(nitro_error())
+            error = nitro_errmsg(e)
             raise NitroError(error)
 
         ofr = NitroFrame(None, False)
@@ -208,10 +208,11 @@ cdef class NitroSocket(object):
         o.sendto(self.socket, cflags, &e)
 
         if e < 0:
+            e = nitro_error()
             if e == _NITRO_EAGAIN:
                 raise NitroFull()
 
-            error = nitro_errmsg(nitro_error())
+            error = nitro_errmsg(e)
             raise NitroError(error)
 
     def reply(self, NitroFrame snd, NitroFrame o, flags=None):
@@ -226,10 +227,11 @@ cdef class NitroSocket(object):
         o.replyto(snd.frame, self.socket, cflags, &e)
 
         if e < 0:
+            e = nitro_error()
             if e == _NITRO_EAGAIN:
                 raise NitroFull()
 
-            error = nitro_errmsg(nitro_error())
+            error = nitro_errmsg(e)
             raise NitroError(error)
 
     def relay_fw(self, NitroFrame snd, NitroFrame o, flags=None):
@@ -244,10 +246,11 @@ cdef class NitroSocket(object):
         o.relayfwto(snd.frame, self.socket, cflags, &e)
 
         if e < 0:
+            e = nitro_error()
             if e == _NITRO_EAGAIN:
                 raise NitroFull()
 
-            error = nitro_errmsg(nitro_error())
+            error = nitro_errmsg(e)
             raise NitroError(error)
 
     def relay_bk(self, NitroFrame snd, NitroFrame o, flags=None):
@@ -262,10 +265,11 @@ cdef class NitroSocket(object):
         o.relaybkto(snd.frame, self.socket, cflags, &e)
 
         if e < 0:
+            e = nitro_error()
             if e == _NITRO_EAGAIN:
                 raise NitroFull()
 
-            error = nitro_errmsg(nitro_error())
+            error = nitro_errmsg(e)
             raise NitroError(error)
 
     def sub(self, prefix):
