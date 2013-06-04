@@ -22,7 +22,7 @@ cdef extern from "nitro.h":
 
     nitro_socket_t * nitro_socket_bind(char *location, nitro_sockopt_t *opt)
     nitro_socket_t * nitro_socket_connect(char *location, nitro_sockopt_t *opt)
-    void nitro_socket_destroy(nitro_socket_t *s)
+    void nitro_socket_close(nitro_socket_t *s)
 
     nitro_frame_t * nitro_recv(nitro_socket_t *s, int flags) nogil
     int nitro_send(nitro_frame_t **fr, nitro_socket_t *s, int flags) nogil
@@ -301,4 +301,4 @@ cdef class NitroSocket(object):
         return e
 
     def __dealloc__(self):
-        nitro_socket_destroy(self.socket)
+        nitro_socket_close(self.socket)
