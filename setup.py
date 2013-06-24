@@ -9,11 +9,11 @@ sourcefiles = ["pynitro/pynitro.c"]
 
 setup(
         name="pynitro",
-        version="0.1",
+        version="0.2",
         packages=["pynitro"],
         ext_modules=[Extension("pynitro.pynitro", sources=sourcefiles,
         extra_compile_args=cflags.split(), extra_link_args=ldflags.split())],
-        zip_safe=False, 
+        zip_safe=False,
         url="https://github.com/bumptech/palm",
         description="Python bindings for the nitro project",
         )
