@@ -19,6 +19,7 @@ cdef extern from "nitro.h":
     uint8_t *nitro_frame_data(nitro_frame_t *f)
     uint32_t nitro_frame_size(nitro_frame_t *f)
     void nitro_frame_destroy(nitro_frame_t *f)
+    void nitro_frame_clear(nitro_frame_t *f)
 
     nitro_socket_t * nitro_socket_bind(char *location, nitro_sockopt_t *opt)
     nitro_socket_t * nitro_socket_connect(char *location, nitro_sockopt_t *opt)
@@ -74,6 +75,9 @@ cdef class NitroFrame(object):
         cd = nitro_frame_data(self.frame)
         cdl = nitro_frame_size(self.frame)
         return cd[:cdl]
+
+    def clear_data(self):
+        nitro_frame_clear(self.frame)
 
     def __dealloc__(self):
         if self.frame:
