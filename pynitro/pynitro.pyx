@@ -58,8 +58,9 @@ cdef class NitroFrame(object):
     _REUSE = 1
     cdef nitro_frame_t *frame
     def __init__(self, data, use_data=True):
+        self.frame = NULL
         if use_data:
-            assert type(data) is str
+            assert type(data) is str, ("Expected NitroFrame argument to be str, was %s" % (type(data),))
             self.frame = nitro_frame_new_copy(
                 data, len(data))
 
@@ -75,7 +76,8 @@ cdef class NitroFrame(object):
         return cd[:cdl]
 
     def __dealloc__(self):
-        nitro_frame_destroy(self.frame)
+        if self.frame:
+            nitro_frame_destroy(self.frame)
 
     def __str__(self):
         return ('<<%s>> with %d bytes' %
