@@ -9,7 +9,7 @@ sourcefiles = ["pynitro/pynitro.c"]
 
 setup(
         name="pynitro",
-        version="0.2",
+        version="0.3",
         packages=["pynitro"],
         ext_modules=[Extension("pynitro.pynitro", sources=sourcefiles,
         extra_compile_args=cflags.split(), extra_link_args=ldflags.split())],
