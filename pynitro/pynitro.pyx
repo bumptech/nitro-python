@@ -311,4 +311,5 @@ cdef class NitroSocket(object):
         return e
 
     def __dealloc__(self):
-        nitro_socket_close(self.socket)
+        if self.socket:
+            nitro_socket_close(self.socket)
