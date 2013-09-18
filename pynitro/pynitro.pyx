@@ -43,6 +43,10 @@ cdef extern from "nitro.h":
     nitro_sockopt_t *nitro_sockopt_new()
     void nitro_sockopt_set_hwm(nitro_sockopt_t *opt, int hwm)
     void nitro_sockopt_set_want_eventfd(nitro_sockopt_t *opt, int want_eventfd)
+    void nitro_sockopt_set_secure(nitro_sockopt_t *opt, int enabled)
+    void nitro_sockopt_set_secure_identity(nitro_sockopt_t *opt, uint8_t *ident, size_t ident_length, uint8_t *pkey, size_t pkey_length)
+    void nitro_sockopt_set_required_remote_ident(nitro_sockopt_t *opt, uint8_t *ident, size_t ident_length)
+
 
 import threading
 
@@ -140,7 +144,8 @@ cdef class NitroSocket(object):
     cdef int eventfd
     def __init__(self, hwm=None, linger=None,
         reconnect_interval=None, max_message_size=None,
-        want_eventfd=None):
+        want_eventfd=None, secure=None, secure_ident=None,
+        required_remote_ident=None):
         with _start_lock:
             nitro_runtime_start()
 
@@ -154,6 +159,12 @@ cdef class NitroSocket(object):
             nitro_sockopt_set_hwm(self.opt, hwm)
         if want_eventfd is not None:
             nitro_sockopt_set_want_eventfd(self.opt, want_eventfd)
+        if secure:
+            nitro_sockopt_set_secure(self.opt, 1)
+        if required_remote_ident is not None:
+            nitro_sockopt_set_required_remote_ident(self.opt, required_remote_ident, len(required_remote_ident))
+        if secure_ident is not None:
+            nitro_sockopt_set_secure_identity(self.opt, secure_ident[0], len(secure_ident[0]), secure_ident[1], len(secure_ident[1]))
 
         # XXX more
 
