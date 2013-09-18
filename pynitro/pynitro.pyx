@@ -44,7 +44,7 @@ cdef extern from "nitro.h":
     void nitro_sockopt_set_hwm(nitro_sockopt_t *opt, int hwm)
     void nitro_sockopt_set_want_eventfd(nitro_sockopt_t *opt, int want_eventfd)
 
-nitro_runtime_start()
+import threading
 
 class NitroError(Exception):
     pass
@@ -54,6 +54,8 @@ class NitroEmpty(Exception):
 
 class NitroFull(Exception):
     pass
+
+_start_lock = threading.Lock()
 
 cdef class NitroFrame(object):
     _REUSE = 1
@@ -139,6 +141,9 @@ cdef class NitroSocket(object):
     def __init__(self, hwm=None, linger=None,
         reconnect_interval=None, max_message_size=None,
         want_eventfd=None):
+        with _start_lock:
+            nitro_runtime_start()
+
         self.socket = NULL
 
         self.opt = nitro_sockopt_new()
